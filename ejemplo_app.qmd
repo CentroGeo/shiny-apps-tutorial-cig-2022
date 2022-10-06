@@ -1,0 +1,53 @@
+---
+title: "Ejemplo básico"
+format: 
+  html:
+    code-tools: true
+server: shiny
+execute:
+  echo: true
+---
+
+```{r}
+#| echo: false
+library(shiny)
+```
+
+Para empezar a entender cómo se integra una aplicación de Shiny, vamos a empezar por una aplicación muy sencilla: un elemento de interacción y una salida gráfica. Usaremos los datos del geyser [old faithful](https://www.stat.cmu.edu/~larry/all-of-statistics/=data/faithful.dat) que vienen incluidos con R para crear un histograma de frecuencia de las erupciones del geyser, el elemento interactivo será un _slider_ para seleccionar el número de _bins_ del histograma
+
+## Input
+
+El elemento de entrada para el usuario va a ser un _slider_. Shiny [incluye](https://shiny.rstudio.com/tutorial/written-tutorial/lesson3/) un montón de definiciones de elementos de entrada, en este caso vamos a usar un [`sliderInput`](https://shiny.rstudio.com/reference/shiny/1.0.3/sliderInput.html)
+```{r}
+sliderInput("bins", "Number of bins:", 
+            min = 1, max = 50, value = 30)
+```
+
+## Gráfica
+
+La salida de la gráfica (que aun no creamos) la vamos a desplegar usando el elemento [`plotOutput`](https://shiny.rstudio.com/reference/shiny/0.11/plotOutput.html), que toma como entrada un _id_ de html que nos sirve para ligar el código del servidor con este elemento.
+```{r}
+plotOutput("distPlot")
+```
+
+## Servidor
+
+El código del servidor determina cómo la applicación va a tomar el _input_ del usuario, los datos de la aplicación y regresar la salida. En este caso, el valor del _slider_ seleccionado por el usuario queda en la variable `input$bins`, con este valor podemos calcular el histograma y regresarlo a la variable de Shiny `output$distPlot` utilizando la función [`renderPlot`](https://shiny.rstudio.com/reference/shiny/1.6.0/renderPlot.html). Fíjense cómo estamos asignando el resultado de `renderPlot()` a `output$distPlot` para indicarle el _id_ en donde debe poner la gráfica.
+
+```{r}
+#| eval: false
+output$distPlot <- renderPlot({
+  x <- faithful[, 2]  # Old Faithful Geyser data
+  bins <- seq(min(x), max(x), length.out = input$bins + 1)
+  hist(x, breaks = bins, col = 'darkgray', border = 'white')
+})
+```
+
+```{r}
+#| context: server
+output$distPlot <- renderPlot({
+  x <- faithful[, 2]  # Old Faithful Geyser data
+  bins <- seq(min(x), max(x), length.out = input$bins + 1)
+  hist(x, breaks = bins, col = 'darkgray', border = 'white')
+})
+```

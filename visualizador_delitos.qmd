@@ -1,0 +1,234 @@
+---
+title: "Visualizador de delitos"
+format: 
+  html:
+    code-tools: true
+    code-fold: true
+    page-layout: custom
+server: shiny
+execute:
+  echo: true
+---
+
+Ahora vamos a integrar todas las gráficas en un sólo visualizador.
+
+```{r}
+#| output: false
+library(shiny)
+library(leaflet)
+```
+
+
+::: {}
+## Seleccionar tipos de delitos
+
+Con este código creamo un selector usando la función [`selectInput`](https://shiny.rstudio.com/reference/shiny/0.12.2/selectInput.html)
+```{r}
+selectInput("id_delito",
+            "Selecciona un delito",
+            c("Robo a casa habitación",
+              "Robo a negocio",                   
+              "Robo a transeúnte",                
+              "Robo a transportista",
+              "Robo en transporte público colectivo",
+              "Robo en transporte público individual",
+              "Robo de vehículo automotor",
+              "Extorsión",                         
+              "Feminicidio",                   
+              "Homicidio doloso",
+              "Secuestro"))
+```
+:::
+
+Definimos dónde van a ir las salidas de nuestras gráficas
+```{r}
+#| layout: [[1], [1,1]]
+
+leafletOutput("mapa", width = 700, height = 600)
+plotOutput("serie", height = 300)
+plotOutput("scatter", height = 300)
+```
+
+
+Integramos la lógica del servidor
+```{r}
+#| eval: false
+base_mapa <- read_rds("01_input/Mapa_scatter_delitos_prioritarios.rds")
+base_mapa <- sf::st_as_sf(base_mapa)
+Encoding(base_mapa$subtipo_de_delito) <- "latin1"
+Encoding(base_mapa$entidad) <- "latin1"
+
+base_ts <- read_rds("01_input/ts_delitos_prioritarios.rds")
+Encoding(base_ts$subtipo_de_delito) <- "latin1"
+
+b_mapa <- reactive({
+  base_mapa %>% 
+    filter(fecha==as.Date("2022-08-01"))
+})
+
+b_ts <- reactive({
+  base_ts
+})
+
+# Reactividad del scatter
+b_scatter <- reactive({
+  base_mapa
+})
+
+# Mapa leaflet
+output$mapa <- leaflet::renderLeaflet({
+  base <- b_mapa()[b_mapa()$subtipo_de_delito==input$id_delito,]
+  pal <- colorNumeric(palette = "inferno",domain =b_mapa()[b_mapa()$subtipo_de_delito==input$id_delito,]$Total)    
+  
+  leaflet() %>% 
+    addProviderTiles(providers$OpenStreetMap) %>% 
+    addPolygons(data=base$geometry,
+                fillColor = pal(base$Total),
+                color="black",
+                weight = 1,
+                opacity = 1,
+                fillOpacity = .7,
+                label = base$NOMGEO,
+                group = "Entidades")%>% 
+    addLegend(pal = pal,values = base$Total) %>% 
+    addLayersControl(overlayGroups = "Entidades")
+})
+
+# Mapa serie de tiempo
+output$serie <- renderPlot({
+  b_ts() %>% 
+    filter(subtipo_de_delito==input$id_delito) %>%
+    ggplot(aes(fecha,Total))+
+    geom_line()+
+    geom_point(data=. %>% 
+                 filter(Total==max(Total)),
+               size=3,col="red"
+    ) +
+    geom_point(data=. %>% 
+                 filter(fecha==max(fecha)),
+               size=3
+    ) +
+    ggtitle("Serie de tiempo") +
+    theme_classic()
+    
+})
+
+output$scatter <- renderPlot({
+  base <- b_scatter() %>% 
+    filter(subtipo_de_delito==input$id_delito)
+  
+  ejes <- base %>% filter(Total==max(Total))
+  
+  base %>% 
+      filter(subtipo_de_delito==input$id_delito) %>%
+      st_drop_geometry() %>%
+      pivot_wider(id_cols = c('clave_ent', 'entidad'),
+                  names_from = 'fecha',
+                  values_from = 'Total') %>% 
+      ggplot(aes(`2022-07-01`,`2022-08-01`)) +
+      geom_point() +
+      scale_y_continuous(limits = c(0,ejes$Total)) +
+      scale_x_continuous(limits = c(0,ejes$Total)) +
+      geom_abline() +
+      ggtitle("Diagrama de dispersión") +
+      theme_classic() +
+      ggrepel::geom_text_repel(aes(label=entidad))
+  
+})
+
+```
+
+```{r}
+#| context: server
+
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(shiny)
+
+base_mapa <- read_rds("01_input/Mapa_scatter_delitos_prioritarios.rds")
+base_mapa <- sf::st_as_sf(base_mapa)
+Encoding(base_mapa$subtipo_de_delito) <- "latin1"
+Encoding(base_mapa$entidad) <- "latin1"
+
+base_ts <- read_rds("01_input/ts_delitos_prioritarios.rds")
+Encoding(base_ts$subtipo_de_delito) <- "latin1"
+
+b_mapa <- reactive({
+  base_mapa %>% 
+    filter(fecha==as.Date("2022-08-01"))
+})
+
+b_ts <- reactive({
+  base_ts
+})
+
+# Reactividad del scatter
+b_scatter <- reactive({
+  base_mapa
+})
+
+# Mapa leaflet
+output$mapa <- leaflet::renderLeaflet({
+  base <- b_mapa()[b_mapa()$subtipo_de_delito==input$id_delito,]
+  pal <- colorNumeric(palette = "inferno",domain =b_mapa()[b_mapa()$subtipo_de_delito==input$id_delito,]$Total)    
+  
+  leaflet() %>% 
+    addProviderTiles(providers$OpenStreetMap) %>% 
+    addPolygons(data=base$geometry,
+                fillColor = pal(base$Total),
+                color="black",
+                weight = 1,
+                opacity = 1,
+                fillOpacity = .7,
+                label = base$NOMGEO,
+                group = "Entidades")%>% 
+    addLegend(pal = pal,values = base$Total) %>% 
+    addLayersControl(overlayGroups = "Entidades")
+})
+
+# Mapa serie de tiempo
+output$serie <- renderPlot({
+  b_ts() %>% 
+    filter(subtipo_de_delito==input$id_delito) %>%
+    ggplot(aes(fecha,Total))+
+    geom_line()+
+    geom_point(data=. %>% 
+                 filter(Total==max(Total)),
+               size=3,col="red"
+    ) +
+    geom_point(data=. %>% 
+                 filter(fecha==max(fecha)),
+               size=3
+    ) +
+    ggtitle("Serie de tiempo") +
+    theme_classic()
+    
+})
+
+output$scatter <- renderPlot({
+  base <- b_scatter() %>% 
+    filter(subtipo_de_delito==input$id_delito)
+  
+  ejes <- base %>% filter(Total==max(Total))
+  
+  base %>% 
+      filter(subtipo_de_delito==input$id_delito) %>%
+      st_drop_geometry() %>%
+      pivot_wider(id_cols = c('clave_ent', 'entidad'),
+                  names_from = 'fecha',
+                  values_from = 'Total') %>% 
+      ggplot(aes(`2022-07-01`,`2022-08-01`)) +
+      geom_point() +
+      scale_y_continuous(limits = c(0,ejes$Total)) +
+      scale_x_continuous(limits = c(0,ejes$Total)) +
+      geom_abline() +
+      ggtitle("Diagrama de dispersión") +
+      theme_classic() +
+      ggrepel::geom_text_repel(aes(label=entidad))
+  
+})
+
+```
+
+
