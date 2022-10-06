@@ -2,3 +2,15 @@
 .Rhistory
 .RData
 .Ruserdata
+.Rpr
+
+01_input/*
+!01_input/.gitkeep
+
+*_files/*
+*.html
+
+renv/*
+renv.lock
+rsconnect
+*.Rproj
