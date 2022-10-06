@@ -60,17 +60,18 @@ Encoding(base_mapa$entidad) <- "latin1"
 # Ui 
 ui <- shinyUI(
   navbarPage(
-    title = "CentroGeo,Taller de shiny",
+    title = "Taller de Shiny, Semana CIG 2022, CentroGeo",
     fluid = TRUE,
     collapsible = TRUE,
-    tabPanel("General",#General
+    tabPanel("Visualizador",#General
              fluidRow(
                tagList(
                  div(class = "container",
-                     h1("Información General",class = "title fit-h1"),
+                     tags$img(src = "CentroGeo-Logo_H.ai.png", height="10%", width="10%"),
+                     h1("Visualizador de delitos",class = "title fit-h1"),
                      p(" La información presentada corresponde a los datos públicados por Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública.
-                             Con información reportada por las Procuradurías Generales de Justicia o Fiscalías Generales de las 32 entidades federativas actualización.
-                              La información está al més de agosto 2022 y fue actualizada el 21 de septiembre del 2022 con datos del SESNSP")))),
+                             Con información reportada por las Procuradurías Generales de Justicia o Fiscalías Generales de las 32 entidades federativas.
+                              La información está actualizada al més de agosto 2022")))),
              column(12,
                     h4("Tipo de delito"),
                     selectInput("id_delito",
