@@ -51,7 +51,7 @@ Encoding(base_ts$subtipo_de_delito) <- "latin1"
 # Incluye los últimos dos meses de información del SESNSP
 # con el total a nivel nacional de Carpetas O víctimas por entidad.
 # y su geometría del Marco Geoestadístico.
-base_mapa <- read_rds("01_input/Mapa_scatter_delitos_prioritarios.rds")
+base_mapa <- read_rds("01_input/mapa_simplificado.rds")
 base_mapa <- sf::st_as_sf(base_mapa)
 Encoding(base_mapa$subtipo_de_delito) <- "latin1"
 Encoding(base_mapa$entidad) <- "latin1"
